@@ -2,15 +2,21 @@
 Dialog.alert('[](){}!');
 
 try {
-  // 2. DOM Targeting
+  // 2. STRICTOR DOM TARGETING (Scoped exclusively to the generated window)
   const d = document;
+  
+  // First, isolate the unique text marker
   const alertElement = Array.from(d.querySelectorAll('div')).find(
     el => el.className.includes('alert_text') && el.textContent.trim() === '[](){}!'
   );
-  const headerElement = Array.from(d.querySelectorAll('div')).find(
-    el => el.className.includes('window_header')
-  );
-  const windowContainer = headerElement ? headerElement.closest('.window') : null;
+  
+  // Find the window container containing *only* this specific text element
+  const windowContainer = alertElement ? alertElement.closest('.window') : null;
+  
+  // Scope the header selection exclusively to this window container (not the global document)
+  const headerElement = windowContainer ? windowContainer.querySelector('.window_header') : null;
+  
+  // Keep background page content untouched
   const contentContainer = d.getElementById('content');
 
   // --- SAVE THE FORMER TITLE ---
@@ -20,19 +26,16 @@ try {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioContext();
 
-  // Keep references to nodes so we can manipulate them during the freeze
   let activeOsc1 = null;
   let activeOsc2 = null;
   let mainGain = null;
   let staticNode = null;
 
-  // BACKGROUND NOISY STATIC GENERATOR (Slowed down to 1Hz - 30Hz)
   function playLowFrequencyStatic() {
     const bufferSize = 2 * audioCtx.sampleRate;
     const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
     
-    // Fill buffer with random white noise values
     for (let i = 0; i < bufferSize; i++) {
       output[i] = Math.random() * 2 - 1;
     }
@@ -41,16 +44,14 @@ try {
     staticNode.buffer = noiseBuffer;
     staticNode.loop = true;
 
-    // Create a steep low-pass filtering setup to restrict static strictly to 1Hz - 30Hz
     const lowPassFilter = audioCtx.createBiquadFilter();
     lowPassFilter.type = 'lowpass';
     lowPassFilter.frequency.setValueAtTime(70, audioCtx.currentTime);
     lowPassFilter.Q.setValueAtTime(1.0, audioCtx.currentTime);
 
     const staticGain = audioCtx.createGain();
-    staticGain.gain.setValueAtTime(3.0, audioCtx.currentTime); // No loudness limits
+    staticGain.gain.setValueAtTime(3.0, audioCtx.currentTime);
 
-    // Route static chain
     staticNode.connect(lowPassFilter);
     lowPassFilter.connect(staticGain);
     staticGain.connect(audioCtx.destination);
@@ -75,11 +76,9 @@ try {
       activeOsc2.frequency.value = 1209;
     }
 
-    // REMOVED LOUDNESS LIMIT: Ramping up to full 9.0 baseline output
     mainGain.gain.setValueAtTime(0.07, now);
     mainGain.gain.exponentialRampToValueAtTime(9.0, now + 3.3);
 
-    // Chaos Modulation (AMPLIFIED: Frequency switching rate increased to 0.55)
     for (let i = 0; i <= 330; i++) {
       const timeOffset = i * 0.01;
       if (Math.random() < 0.55) {
@@ -105,7 +104,6 @@ try {
     const now = audioCtx.currentTime;
     const gainNode = audioCtx.createGain();
     
-    // AMPLIFIED LOUDNESS: Layering three parallel oscillators to physically amplify sound output
     const oscLayers = [
       audioCtx.createOscillator(),
       audioCtx.createOscillator(),
@@ -119,7 +117,6 @@ try {
       osc.connect(gainNode);
     });
 
-    // Unrestricted raw output power scaling
     gainNode.gain.setValueAtTime(6.0, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + 3.0);
     gainNode.connect(audioCtx.destination);
@@ -152,7 +149,7 @@ try {
     playLowFrequencyStatic();
     alertElement.textContent = 'ERROR: Uncaught SyntaxError: Unexpected identifier \'999\' (at VM9999 :9:99)';
     
-    // --- OBLITERATE X AND OK BUTTONS AT THE START ---
+    // --- OBLITERATE X AND OK BUTTONS ONLY INSIDE THIS SPECIFIC WINDOW ---
     if (windowContainer) {
       windowContainer.style.transition = 'transform 0.01s linear';
       
@@ -166,14 +163,12 @@ try {
     setTimeout(() => {
       if (audioCtx.state === 'suspended') audioCtx.resume();
 
-      // Trigger background 1Hz-30Hz static and the seamless glitch track concurrently
       playSeamlessGlitchTrack();
 
-      const totalTicks = 300; // 3 seconds baseline
+      const totalTicks = 300; 
       let currentTick = 0;
-      let freezeTicks = 0; // Tracks the 0.3s (30 ticks) DTMF freeze
+      let freezeTicks = 0; 
       
-      // Cache values for absolute visual freeze state
       let frozenTransform = '';
       let frozenText = '';
       let frozenTitle = '';
@@ -181,11 +176,10 @@ try {
       const chaosInterval = setInterval(() => {
         const now = audioCtx.currentTime;
 
-        // --- DMTF "6" REALISTIC CRASH INTERCEPT (At 0.3 seconds remaining / Tick 270) ---
+        // --- DMTF "6" REALISTIC CRASH INTERCEPT ---
         if (currentTick === 270 && freezeTicks < 30) {
           
           if (freezeTicks === 0) {
-            // Audio Timeline Wipe
             if (activeOsc1 && activeOsc2) {
               activeOsc1.frequency.cancelScheduledValues(now);
               activeOsc2.frequency.cancelScheduledValues(now);
@@ -193,7 +187,6 @@ try {
               activeOsc2.frequency.setValueAtTime(1477, now);
             }
             
-            // Capture exact current states to hard-lock them and eliminate post-crash ticks
             if (windowContainer) {
               frozenTransform = windowContainer.style.transform || `translate(180px, -100px) skew(45deg) rotate(-25deg)`;
             }
@@ -203,30 +196,27 @@ try {
           
           freezeTicks++;
 
-          // REALISTIC CRASH STUTTER ("beebeebeebeebeep"): Alternate volume every 2 ticks (20ms)
           if (mainGain) {
             if (freezeTicks % 2 === 0) {
-              mainGain.gain.setValueAtTime(1.0, now); // Volume High (bee)
+              mainGain.gain.setValueAtTime(1.0, now); 
             } else {
-              mainGain.gain.setValueAtTime(0.001, now); // Volume Cut (silence drop)
+              mainGain.gain.setValueAtTime(0.001, now); 
             }
           }
 
-          // ENFORCED FREEZE: Clamp all elements to their frozen snapshot values
           if (windowContainer) {
             windowContainer.style.transform = frozenTransform;
           }
           alertElement.textContent = frozenText;
           d.title = frozenTitle;
           
-          return; // Early return entirely preserves the interface state with zero layout modifications
+          return; 
         }
 
         // Phase 3: 3-second mark reached -> Obliterate and Reset
         if (currentTick >= totalTicks) {
           clearInterval(chaosInterval);
           
-          // Stop low frequency background static
           if (staticNode) {
             try { staticNode.stop(); } catch(e) {}
           }
@@ -234,6 +224,7 @@ try {
           let spawnX = window.innerWidth / 2;
           let spawnY = window.innerHeight / 2;
           
+          // Removes only the targeted window box
           if (windowContainer) {
             const rect = windowContainer.getBoundingClientRect();
             spawnX = rect.left + rect.width / 2;
@@ -248,17 +239,14 @@ try {
             contentContainer.style.filter = 'none';
           }
 
-          // Trigger Effects
           playBoomSound();
 
-          // --- SET TITLE WHEN PAYLOAD ENDS ---
           d.title = "THE EVENT BEGINS";
 
           const overlay = d.createElement('div');
           overlay.className = 'event-999-overlay';
           d.body.appendChild(overlay);
 
-          // --- OUTRO RENDER LOOP (Handles Color, Corruption, and Shaking) ---
           let outroFrame = 0;
           const originalOverlayText = '999 EVENT...';
 
@@ -270,14 +258,12 @@ try {
 
             outroFrame++;
 
-            // 1. Randomize text color every frame
             const r = Math.floor(Math.random() * 256);
             const g = Math.floor(Math.random() * 256);
             const b = Math.floor(Math.random() * 256);
             overlay.style.color = `rgb(${r}, ${g}, ${b})`;
             overlay.style.textShadow = `0 0 20px rgb(${r}, ${g}, ${b})`;
 
-            // 2. Corrupt the text slightly
             let textArr = originalOverlayText.split('');
             for (let i = 0; i < textArr.length; i++) {
               if (Math.random() < 0.15) {
@@ -286,19 +272,17 @@ try {
             }
             overlay.textContent = textArr.join('');
 
-            // 3. Shake the overlay layout coordinates slightly
             const overlayShakeX = spawnX + ((Math.random() - 0.5) * 15);
             const overlayShakeY = spawnY + ((Math.random() - 0.5) * 15);
             overlay.style.left = `${overlayShakeX}px`;
             overlay.style.top = `${overlayShakeY}px`;
 
-          }, 16); // ~60fps rendering frame loop
+          }, 16); 
 
-          // --- RESET TITLE AFTER TEXT SHRINK / OVERLAY REMOVAL ---
           setTimeout(() => {
             clearInterval(outroRenderInterval);
             overlay.remove();
-            d.title = originalTitle; // Title restored to original state
+            d.title = originalTitle; 
           }, 3000);
           return;
         }
@@ -306,24 +290,20 @@ try {
         currentTick++;
         const progression = currentTick / totalTicks;
         
-        // --- FAST CONTRAST RAMP ---
         if (contentContainer) {
           const targetContrast = 100 + (Math.pow(progression, 2) * 900);
           contentContainer.style.filter = `contrast(${targetContrast}%)`;
         }
 
-        // --- FULL TEXT & DOCUMENT TITLE MANIPULATION DYNAMICS ---
         let currentText = alertElement.textContent;
         let currentLength = currentText.length;
 
         if (currentLength > 0) {
-          // AMPLIFIED: Shifted degradation factor from 0.5 to 0.7
           if (Math.random() < 0.7 && currentLength > 40) {
             currentText = currentText.slice(0, -1);
             currentLength--;
           }
 
-          // AMPLIFIED: Injection probability spiked to 0.95
           if (Math.random() < 0.95) {
             const randomIndex = Math.floor(Math.random() * currentLength);
             currentText = currentText.substring(0, randomIndex) + '999 ' + currentText.substring(randomIndex + 1);
@@ -332,13 +312,12 @@ try {
           const glitchedText = currentText.substring(0, 99);
           alertElement.textContent = glitchedText;
           
-          // Apply a matching corrupt variant to the document browser title bar
           if (Math.random() < 0.8) {
             d.title = glitchedText.substring(0, 25) + '...';
           }
         }
-
-        // --- EXPONENTIAL SCREEN SHAKE LOOP (AMPLIFIED: Severity scale factor shifted from 1.2 to 2.2) ---
+        // update 5353
+        // --- EXCLUSIVE MATRIX TRANSFORM SHAKE (Only hits this specific window layout) ---
         if (windowContainer) {
           const severity = currentTick * 2.2;
           const xShift = (Math.random() - 0.5) * severity;
