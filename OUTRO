@@ -21,7 +21,7 @@
     const video = document.createElement("video");
     video.src = VIDEO_URL;
     video.playsInline = true;
-    video.autoplay = true;
+    video.autoplay = false;
     Object.assign(video.style, {
       width: "100%",
       height: "100%",
