@@ -15,6 +15,35 @@
     const currentMonthUpper = months[now.getMonth()];
     const currentMonthCap = monthNamesCapitalized[now.getMonth()];
 
+    // Keep track of original text values to revert everything back to normal
+    const originalTextMap = new Map();
+    let mutationObserverInstance = null;
+    let timerIntervalInstance = null;
+
+    // --- Cleanup / Revert Function ---
+    function revertEverything() {
+        // Stop the countdown banner and remove it
+        if (timerIntervalInstance) clearInterval(timerIntervalInstance);
+        const banner = document.getElementById('fools-countdown-banner');
+        if (banner) banner.remove();
+
+        // Stop the mutation observer
+        if (mutationObserverInstance) {
+            mutationObserverInstance.disconnect();
+        }
+
+        // Restore all text nodes back to their original states
+        originalTextMap.forEach((originalText, node) => {
+            if (node && node.parentNode) {
+                node.nodeValue = originalText;
+            }
+        });
+        originalTextMap.clear();
+
+        // If title was mutated, we can leave it or clear specific markers if tracked, 
+        // but resetting standard text handles most DOM elements cleanly.
+    }
+
     // --- 1. Video & Text Overlay Component ---
     function initVideoOverlay() {
         const container = document.createElement('div');
@@ -126,19 +155,18 @@
                 timeLeft--;
             } else {
                 banner.textContent = `${currentMonthCap} FOOLS HAS OFFICIALLY CONQUERED REALITY! :3`;
-                clearInterval(timerInterval);
+                clearInterval(timerIntervalInstance);
                 
-                // Revert everything back to normal when countdown finishes
+                // Automatically revert everything back to normal when timer hits 0
                 setTimeout(() => {
-                    banner.remove();
-                    location.reload();
-                }, 2000);
+                    revertEverything();
+                }, 2000); // 2 second pause on final message before restoring normal page state
             }
         }
 
         updateCountdownText();
         document.body.appendChild(banner);
-        const timerInterval = setInterval(updateCountdownText, 1000);
+        timerIntervalInstance = setInterval(updateCountdownText, 1000);
     }
 
     // --- 3. Dreadified / OwO / Quirk Text Engine ---
@@ -183,6 +211,9 @@
         const originalText = node.nodeValue;
         const transformed = dreadifyText(originalText);
         if (originalText !== transformed) {
+            if (!originalTextMap.has(node)) {
+                originalTextMap.set(node, originalText);
+            }
             node.nodeValue = transformed;
             processedNodes.add(node);
         }
@@ -214,7 +245,7 @@
     function initMutationEngine() {
         walkDOM(document.body);
 
-        const observer = new MutationObserver((mutations) => {
+        mutationObserverInstance = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
@@ -234,7 +265,7 @@
             }
         });
 
-        observer.observe(document.documentElement, {
+        mutationObserverInstance.observe(document.documentElement, {
             childList: true,
             subtree: true,
             characterData: true
